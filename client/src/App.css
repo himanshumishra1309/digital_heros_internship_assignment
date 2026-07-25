@@ -294,9 +294,22 @@
 /* ---------- footer ---------- */
 
 .page__footer {
-  text-align: center;
-  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.page__credit {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: var(--ink-faint);
+}
+
+.page__credit:hover {
+  color: var(--accent);
 }
 
 /* ---------- responsive ---------- */

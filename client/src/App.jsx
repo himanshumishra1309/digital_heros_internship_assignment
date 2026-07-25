@@ -70,6 +70,14 @@ function App() {
 
       <footer className="page__footer">
         <span>checks HTTP status, response time, title, meta description, H1s, alt text, and word count</span>
+        <a
+          className="page__credit"
+          href="https://digitalheroesco.com"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Built for Digital Heroes Training Task
+        </a>
       </footer>
     </div>
   );

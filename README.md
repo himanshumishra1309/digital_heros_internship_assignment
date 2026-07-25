@@ -16,60 +16,137 @@ not just "does it return the right JSON." A server that fetches
 user-supplied URLs is a real SSRF surface, a public endpoint needs rate
 limiting or it's an open invitation to abuse, and a cache needs an actual
 eviction policy, not just a TTL and a prayer. Those three things ended up
-being where most of my effort went, and they're also the three design
+being where most of my backend effort went, and they're the three design
 decisions I've written up below.
+
+On the frontend, I wanted the tool to actually look like what it's named
+after — "Page Pulse" reporting a page's vitals felt like it should read
+as a diagnostic readout, not another card-with-an-input-box demo. So the
+UI leans into an ECG/monitor aesthetic: a scrolling pulse line that
+changes color and speed with request state, and a report card styled
+like a lab printout.
 
 ## Tech stack
 
-- **Backend:** Node.js, Express
-- **Parsing:** Cheerio (server-side HTML parsing, no headless browser)
-- **HTTP client:** Axios
-- **Rate limiting:** a hand-written in-memory token bucket
-- **Caching:** a hand-written in-memory cache with TTL + frequency-based
-  eviction
-- **Testing:** Jest
-- **Frontend:** [fill in what you actually built — plain HTML/CSS/JS or
-  whatever framework you used]
+**Backend**
+- Node.js, Express
+- Cheerio for server-side HTML parsing (no headless browser)
+- Axios as the HTTP client
+- Hand-written in-memory token-bucket rate limiter
+- Hand-written in-memory cache with TTL + frequency-based eviction
+- Jest for testing
+
+**Frontend**
+- React + Vite
+- Plain CSS (no UI library) — `IBM Plex Mono` for data/labels, `IBM Plex Sans`
+  for body text
+- No extra dependencies beyond React/Vite itself — just `fetch`, component
+  state, and hand-written SVG for the pulse animation
 
 No database. No Redis. That's a deliberate call, not an oversight —
-explained in the design decisions below.
+explained in design decision #3 below.
+
+## Architecture
+
+```mermaid
+flowchart TD
+    Client["React client<br/>(Vite dev server / static build)"]
+    RateLimit["rateLimiter.middleware.js<br/>token bucket, per IP"]
+    Controller["pageInfo.controller.js"]
+    Cache["cache.js<br/>TTL + popularity eviction"]
+    FetchPage["fetchPage.js<br/>validate → SSRF check → fetch → parse"]
+    Target["Target site<br/>(user-supplied URL)"]
+
+    Client -->|"POST /api/pageInfo"| RateLimit
+    RateLimit -->|"over limit"| Client
+    RateLimit --> Controller
+    Controller --> Cache
+    Cache -->|"cache hit"| Client
+    Cache -->|"cache miss"| FetchPage
+    FetchPage -->|"DNS + SSRF guard,<br/>re-checked per redirect hop"| Target
+    Target --> FetchPage
+    FetchPage -->|"store result"| Cache
+    FetchPage --> Client
+```
+
+Request flow: every request passes through the rate limiter first, since
+that's the cheapest check and should reject abusive traffic before any
+other work happens. A cache hit short-circuits straight back to the
+client. On a miss, `fetchPage.js` resolves and SSRF-checks the hostname,
+follows redirects one hop at a time (re-checking SSRF on each hop), fetches
+the page, and hands the HTML to the parser — the successful result is
+then written back into the cache before the response goes out.
 
 ## Project structure
 
 ```
 .
-├── controller/
-│   └── pageInfo.controller.js   # request handling, ties cache + fetchPage together
-├── middleware/
-│   └── rateLimiter.middleware.js
-├── routes/
-│   └── pageInfo.routes.js
-├── script/
-│   ├── fetchPage.js              # validation, SSRF guard, redirect handling, fetch
-│   └── cache.js                  # TTL + frequency-aware in-memory cache
-├── utils/
-│   ├── ApiError.js
-│   ├── ApiResponse.js
-│   └── asyncHandler.js
-├── tests/
-│   └── parseReport.test.js
-├── public/                       # frontend (fill in if different)
-└── index.js                      # app entry point
+├── client
+│   ├── index.html
+│   ├── vite.config.js          # dev-server proxy to the backend
+│   ├── .env.example
+│   ├── public/
+│   │   ├── favicon.svg
+│   │   └── icons.svg
+│   └── src
+│       ├── main.jsx
+│       ├── App.jsx             # owns state, talks to the API
+│       ├── App.css
+│       ├── index.css           # tokens, fonts, reset
+│       └── components/
+│           ├── PulseWaveform.jsx   # the signature animated ECG line
+│           ├── UrlForm.jsx
+│           ├── ReportCard.jsx
+│           ├── StatCard.jsx
+│           └── ErrorNotice.jsx
+│
+└── server
+    ├── src
+    │   ├── index.js             # entry point
+    │   ├── app.js                # express app setup
+    │   ├── controller/
+    │   │   └── pageInfo.controller.js
+    │   ├── middleware/
+    │   │   └── rateLimiter.middleware.js
+    │   ├── route/
+    │   │   └── pageInfo.route.js
+    │   ├── script/
+    │   │   ├── fetchPage.js      # validation, SSRF guard, redirects, parsing
+    │   │   └── cache.js          # TTL + popularity-aware in-memory cache
+    │   └── utils/
+    │       ├── ApiError.js
+    │       ├── ApiResponse.js
+    │       └── asyncHandler.js
+    └── tests/
+        └── parseReport.test.js
 ```
 
 ## Setup
 
+**Backend**
+
 ```bash
+cd server
 npm install
-npm start        # runs on http://localhost:3000 (or your configured PORT)
+npm start        # runs on http://localhost:3000 by default
 ```
 
-Requires Node 18+. No environment variables or database setup needed to
-run it locally.
-
-Run the tests:
+**Frontend** (in a separate terminal)
 
 ```bash
+cd client
+npm install
+npm run dev       # runs on http://localhost:5173
+```
+
+`vite.config.js` proxies `/api` requests from the dev server straight to
+the backend, so no `.env` is needed for local development. Requires
+Node 18+ on both sides.
+
+Run the backend tests:
+
+```bash
+cd server
 npm test
 ```
 
@@ -93,11 +170,11 @@ npm test
     "httpStatus": 200,
     "responseTimeMs": 94,
     "title": "Example Domain",
-    "metaDescription": "A page about great things.",
-    "h1Count": 1,
-    "imagesTotal": 3,
-    "imagesMissingAlt": 1,
-    "wordCount": 240,
+    "metaDescription": null,
+    "h1Count": 0,
+    "imagesTotal": 0,
+    "imagesMissingAlt": 0,
+    "wordCount": 24,
     "cached": false
   },
   "message": "Page fetched successfully",
@@ -106,7 +183,8 @@ npm test
 ```
 
 `title` and `metaDescription` are `null` when the page genuinely doesn't
-have one — that's a valid result, not an error. `cached` tells you whether
+have one — that's a valid result, not an error (`example.com` above is a
+real example of this, not a hypothetical). `cached` tells you whether
 this response came from the in-memory cache or a fresh fetch; it's not
 part of the original spec, but it made it much easier to actually
 demonstrate the caching layer working rather than just describing it.
@@ -199,18 +277,60 @@ gap without needing Redis to do it.
 
 ## Testing
 
-`tests/parseReport.test.js` unit-tests the parsing logic directly, with
-no network involved. It covers one happy-path block, two failure-case
-blocks (a page with no metadata at all, and malformed/empty HTML), and
-one extra block for the `og:description` fallback, since that's a real
-branch in the code a pure happy-path test wouldn't exercise. I did not
-write tests for `fetchPage` itself or the SSRF/redirect logic, since
-testing those properly needs network mocking — I judged that out of scope
-for the time I had, and the task specifically asked for tests on the
-parsing logic.
+`server/tests/parseReport.test.js` unit-tests the parsing logic directly,
+with no network involved. It covers one happy-path block, two
+failure-case blocks (a page with no metadata at all, and malformed/empty
+HTML), and one extra block for the `og:description` fallback, since
+that's a real branch in the code a pure happy-path test wouldn't
+exercise. I did not write tests for `fetchPage` itself or the
+SSRF/redirect logic, since testing those properly needs network mocking —
+I judged that out of scope for the time I had, and the task specifically
+asked for tests on the parsing logic.
+
+## Scale assumptions
+
+I didn't have real traffic data to design against, so here are the
+assumptions I made explicit rather than silently baked in:
+
+- **Usage pattern**: a portfolio/demo tool, not a paying SaaS product —
+  low thousands of daily active users at most, usage spiky around a
+  specific moment (shared somewhere, or someone re-checking after a fix)
+  rather than steady load.
+- **Access pattern**: I'm assuming a handful of URLs get hit repeatedly
+(a re-check after a fix, a briefly popular link) while most are
+one-off, which is exactly why caching and the rate limiter already
+pay off even at small scale.
+
+**Current capacity (single free-tier instance, in-memory cache + limiter):**
+Roughly 50–100 concurrent in-flight audits before RAM/connection limits
+on a typical free-tier instance (~512MB, shared CPU) become the
+bottleneck, and ~10–20 requests/sec sustained, bounded by average
+external fetch time. In practice this comfortably supports low thousands
+of daily users doing occasional checks — the one real weak spot is many
+people hitting many *different, uncached* URLs in the same second, which
+isn't the common case here.
+
+**Capacity after the future-scope items below:** roughly linear in
+instance count once horizontally scaled, plus request coalescing turning
+a URL going viral (thousands of people auditing the same link at once)
+into a single origin fetch instead of thousands. That combination is
+what actually unlocks tens of thousands of daily users, not more
+hardware alone, but closing the one scenario the current design is
+weakest against.
 
 ## Known limitations / what I'd change with another day
 
+- No request coalescing — if many users hit the same uncached URL at the
+  exact same moment, each one triggers its own origin fetch instead of
+  sharing one in-flight request. This is the single biggest gap between
+  current and future-scope capacity (see Scale assumptions above).
+- Single instance only — the in-memory cache and rate limiter don't sync
+  across multiple servers, so horizontal scaling would need a shared
+  store (Redis) before it's safe to run more than one instance.
+- No CDN in front of the API — since the endpoint is a POST, it isn't
+  edge-cacheable as-is; switching to a `GET /api/pageInfo?url=` variant
+  would let a CDN cache repeated lookups without the request ever
+  reaching the server.
 - Hit counts in the cache don't decay over time (see design decision #2).
 - The in-memory rate limiter and cache's `Map`s grow with every distinct
   IP/URL seen and are never swept — a non-issue at this scale, but a
@@ -221,19 +341,37 @@ parsing logic.
 - No support for auditing multiple URLs in one request (e.g. a sitemap) —
   would need to move off a synchronous request/response model into a job
   queue for that.
+- The frontend shows one report at a time with no history — a "recent
+  checks" list would be a natural next addition.
 
 ## Where I used AI
 
 I used Claude throughout this project as a thinking partner, mainly for
-the parts I hadn't built before — I went in knowing the shape I wanted,
-but used it to catch mistakes in my own code and to learn things I
-genuinely didn't know, like SSRF being a real concern for a URL-fetching
-server at all. The clearest example of me actually pushing back rather
-than accepting the first answer: I was initially given a fixed-window
-rate limiter, and when I asked how the refill actually worked, I realized
-it had a boundary-burst flaw, so I asked for a true token bucket instead.
-Similarly, for caching, I knew I wanted both a time limit and popularity
-to matter together, and worked through what that actually meant instead
-of taking a single suggestion at face value. The controller and route
-files are mine, written directly using the same `asyncHandler` /
-`ApiError` / `ApiResponse` pattern I'd already set up in my utils.
+the parts I hadn't built before — I went in knowing the shape I wanted on
+the backend, but used it to catch mistakes in my own code and to learn
+things I genuinely didn't know, like SSRF being a real concern for a
+URL-fetching server at all. The clearest example of me actually pushing
+back rather than accepting the first answer: I was initially given a
+fixed-window rate limiter, and when I asked how the refill actually
+worked, I realized it had a boundary-burst flaw, so I asked for a true
+token bucket instead. Similarly, for caching, I knew I wanted both a time
+limit and popularity to matter together, and worked through what that
+actually meant instead of taking a single suggestion at face value.
+
+The frontend is where I leaned on AI the most directly — I asked for a
+design that fit the tool's name rather than a generic form-and-card
+layout, and got the ECG/pulse-line concept, the component breakdown, and
+the styling. I reviewed the components, adjusted them to fit my actual
+API's response shape, and tested it against my real backend before
+accepting it.
+
+
+
+## Coding Style: 
+
+A note on the `utils/` folder (`ApiError`, `ApiResponse`, `asyncHandler`):
+this is a standard Express boilerplate pattern I already use across my
+own projects, not something written specifically for this assignment. I
+brought my usual project skeleton in and built the audit-specific logic
+(`fetchPage.js`, `cache.js`, the rate limiter, the controller) on top of
+it, the same way I'd start any Express backend.
