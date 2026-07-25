@@ -1,122 +1,78 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState } from "react";
+import PulseWaveform from "./components/PulseWaveform";
+import UrlForm from "./components/UrlForm";
+import ReportCard from "./components/ReportCard";
+import ErrorNotice from "./components/ErrorNotice";
+import "./App.css";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [url, setUrl] = useState("");
+  const [status, setStatus] = useState("idle"); // idle | loading | success | error
+  const [report, setReport] = useState(null);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!url.trim()) return;
+
+    setStatus("loading");
+    setErrorMessage("");
+
+    try {
+      const res = await fetch(`${API_BASE}/urlData/pageInfo`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: url.trim() }),
+      });
+
+      const body = await res.json();
+
+      if (!res.ok || !body.success) {
+        setStatus("error");
+        setReport(null);
+        setErrorMessage(body.message || "That page couldn't be checked.");
+        return;
+      }
+
+      setReport(body.data);
+      setStatus("success");
+    } catch {
+      setStatus("error");
+      setReport(null);
+      setErrorMessage("Couldn't reach the server. Check your connection and try again.");
+    }
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
+    <div className="page">
+      <header className="page__header">
+        <div className="wordmark">
+          <span className="wordmark__title">Page Pulse</span>
+          <span className="wordmark__subtitle">a quick vitals check for any page</span>
         </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+      </header>
 
-      <div className="ticks"></div>
+      <PulseWaveform status={status} />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      <main className="page__main">
+        <UrlForm
+          url={url}
+          onUrlChange={setUrl}
+          onSubmit={handleSubmit}
+          isLoading={status === "loading"}
+        />
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+        {status === "error" && <ErrorNotice message={errorMessage} />}
+        {status === "success" && report && <ReportCard report={report} />}
+      </main>
+
+      <footer className="page__footer">
+        <span>checks HTTP status, response time, title, meta description, H1s, alt text, and word count</span>
+      </footer>
+    </div>
+  );
 }
 
-export default App
+export default App;
