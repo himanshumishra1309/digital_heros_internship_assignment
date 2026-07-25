@@ -5,7 +5,7 @@ import ReportCard from "./components/ReportCard";
 import ErrorNotice from "./components/ErrorNotice";
 import "./App.css";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const API_BASE = import.meta.env.VITE_API_BASE_URL || https://digital-heros-internship-assignment.vercel.app;
 
 function App() {
   const [url, setUrl] = useState("");
@@ -21,7 +21,7 @@ function App() {
     setErrorMessage("");
 
     try {
-      const res = await fetch(`${API_BASE}/urlData/pageInfo`, {
+      const res = await fetch(`${API_BASE}/api/v1/urlData/pageInfo`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: url.trim() }),
