@@ -5,7 +5,6 @@ response time, title, meta description, H1 count, images missing `alt`
 text, and an approximate word count.
 
 **Live demo:** [add your deployed link here]
-**Repo:** [add your GitHub link here]
 
 ## Why I built it this way
 
