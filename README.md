@@ -4,7 +4,7 @@ A small tool that audits any URL — paste a link, get back its HTTP status,
 response time, title, meta description, H1 count, images missing `alt`
 text, and an approximate word count.
 
-**Live demo:** [add your deployed link here]
+**Live demo:** https://digital-heros-internship-assignment-nine.vercel.app/
 
 ## Why I built it this way
 
