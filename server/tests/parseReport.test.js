@@ -64,9 +64,10 @@ describe("parseReport — happy path", () => {
   });
 
   test("counts body words but excludes script and style contents", () => {
-    // "Welcome" + "Projects" + the 7-word paragraph = 9.
-    // The script's JS and the style block's CSS must not leak into the count.
-    expect(result.wordCount).toBe(9);
+    // "Welcome" (1) + "Projects" (1) + the paragraph (9 words, despite claiming
+    // to be "seven") = 11. The script's JS and the style block's CSS must not
+    // leak into the count.
+    expect(result.wordCount).toBe(11);
   });
 });
 
