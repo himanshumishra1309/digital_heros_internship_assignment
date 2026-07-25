@@ -14,4 +14,8 @@ app.use(express.json({limit: "2mb"}));
 
 app.use(express.urlencoded({extended: true, limit: "2mb"}));
 
+import pageInfoRouter from "./route/pageInfo.route.js";
+
+app.use('/api/v1/urlData', pageInfoRouter);
+
 export {app};

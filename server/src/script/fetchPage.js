@@ -31,7 +31,7 @@
  */
 
 import * as cheerio from "cheerio";
-import { ApiError } from "../utils/ApiError";
+import { ApiError } from "../utils/ApiError.js";
 import { lookup } from "dns/promises";
 import axios from "axios";
 
