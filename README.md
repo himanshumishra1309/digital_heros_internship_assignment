@@ -134,6 +134,7 @@ then written back into the cache before the response goes out.
 ```bash
 cd server
 npm install
+cp .env.example .env
 npm start        # runs on http://localhost:8000 by default
 ```
 
@@ -142,6 +143,7 @@ npm start        # runs on http://localhost:8000 by default
 ```bash
 cd client
 npm install
+cp .env.example .env
 npm run dev       # runs on http://localhost:5173
 ```
 
