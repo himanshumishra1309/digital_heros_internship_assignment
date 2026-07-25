@@ -30,8 +30,7 @@ function App() {
         const retryAfter = body?.retryAfter;
         return retryAfter
           ? `Too many requests. Try again in ${retryAfter}s.`
-          : backendMessage ||
-              "Too many requests. Please slow down and try again shortly.";
+          : "Too many requests. Please slow down and try again shortly.";
       }
       case 502:
         return (
@@ -46,7 +45,10 @@ function App() {
       case 500:
         return "Something went wrong on our end. Try again in a moment.";
       default:
-        return backendMessage || `Request failed with status ${status}.`;
+        return (
+          backendMessage ||
+          `Request failed with status ${status}. Please try again.`
+        );
     }
   }
 
@@ -73,19 +75,14 @@ function App() {
       return;
     }
 
-    let body;
+    let body = null;
     try {
       body = await res.json();
     } catch {
-      setStatus("error");
-      setReport(null);
-      setErrorMessage(
-        `Got an unexpected response from the server (status ${res.status}). Check the API URL is correct.`,
-      );
-      return;
+      body = null;
     }
 
-    if (!res.ok || !body.success) {
+    if (!res.ok || !body?.success) {
       setStatus("error");
       setReport(null);
       setErrorMessage(getErrorMessage(res.status, body));
