@@ -16,6 +16,10 @@ app.use(express.json({limit: "2mb"}));
 
 app.use(express.urlencoded({extended: true, limit: "2mb"}));
 
+app.get('/', (req, res)=>{
+    res.json("Healthy Server");
+})
+
 
 import pageInfoRouter from "./route/pageInfo.route.js";
 
