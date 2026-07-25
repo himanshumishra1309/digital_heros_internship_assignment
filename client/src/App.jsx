@@ -5,7 +5,7 @@ import ReportCard from "./components/ReportCard";
 import ErrorNotice from "./components/ErrorNotice";
 import "./App.css";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || https://digital-heros-internship-assignment.vercel.app;
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 function App() {
   const [url, setUrl] = useState("");
