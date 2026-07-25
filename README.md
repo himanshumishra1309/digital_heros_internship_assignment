@@ -121,6 +121,12 @@ then written back into the cache before the response goes out.
         └── parseReport.test.js
 ```
 
+## ScreenShots of UI:
+
+<img width="844" height="903" alt="Screenshot From 2026-07-25 18-41-19" src="https://github.com/user-attachments/assets/84cbb99c-e8ed-490f-b4d8-4ad74710364e" />
+<img width="844" height="903" alt="Screenshot From 2026-07-25 18-41-53" src="https://github.com/user-attachments/assets/825ff177-a9da-4733-8e2c-2355b16a9688" />
+
+
 ## Setup
 
 **Backend**
@@ -128,7 +134,7 @@ then written back into the cache before the response goes out.
 ```bash
 cd server
 npm install
-npm start        # runs on http://localhost:3000 by default
+npm start        # runs on http://localhost:8000 by default
 ```
 
 **Frontend** (in a separate terminal)
