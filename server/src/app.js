@@ -8,11 +8,14 @@ app.use(cors({
   credentials: true
 }));
 
+app.set("trust proxy", 1);
+
 app.use(express.static("public"));
 
 app.use(express.json({limit: "2mb"}));
 
 app.use(express.urlencoded({extended: true, limit: "2mb"}));
+
 
 import pageInfoRouter from "./route/pageInfo.route.js";
 
